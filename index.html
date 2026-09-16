@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LOGIN MOCODESTA NEXTGEN</title>
+<link rel="icon" sizes="192x192" href="MOCODESTA.png">
+<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="STYLE.css"/>
+<script src="login.js"></script>
+<script src="disable.js"></script>
+</head>
+<body>
+<div class="container">
+<div class="main">
+<h2>MOCODESTA NEXTGEN</h2>
+<h2><img src="MOCODESTA.png"></h2>
+<form id="form_id" method="post" name="myform">
+<label>Username :</label>
+<input type="text" name="username" id="username"/>
+<label>Password :</label>
+<input type="password" name="password" id="password"/>
+<input type="button" value="LOGIN" id="submit" onclick="validate()"/>
+<input type="checkbox" checked="checked" name="remember">Remember Me</form>
+<span><b class="note">Note : </b>If you have any questions, we will gladly help you or contact us<br/><b class="valid">Rahmat Supriyanto<br/>Engineering PPA BA</b></span>
+<h2><img src="SS6.png"></h2>
+</div>
+</div>
+<script>
+    document.onkeydown = function(e) {
+    if(event.keyCode == 123) {
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'E'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'H'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'A'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'F'.charCodeAt(0)){
+    return false;
+    }
+    if(e.ctrlKey && e.keyCode == 'E'.charCodeAt(0)){
+    return false;
+    }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>MOCODESTA NEXTGEN</title>
+    <link rel="icon" sizes="192x192" href="MOCODESTA.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a2e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        .ui-layer { position: absolute; z-index: 10; pointer-events: none; }
+        .ui-interactive { pointer-events: auto; }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .bg-select { background: rgba(15,23,42,.82); color: #fff; border: 1px solid rgba(255,255,255,.18); outline: none; }
+        .bg-select option { background: #0f172a; color: #fff; }
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #3b82f6; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #475569; border-radius: 2px; }
+    </style>
+</head>
+<body class="text-white">
+
+    <div id="canvas-container"></div>
+
+    <div class="ui-layer ui-interactive top-0 w-full flex justify-between items-center p-1 glass-panel">
+        <div class="flex items-center space-x-4 ml-2">
+            <div class="bg-red-600 rounded p-1"><i class="fa-sharp fa-regular fa-square-m"></i></div>
+            <h1 class="font-bold text-sm tracking-wide">MOCODESTA NEXT GENERATION<span class="text-xs font-normal text-gray-400"> Created by Rahmat Supriyanto</span></h1>
+        </div>
+        
+        <div class="flex space-x-2 text-xs font-semibold">
+            <button class="px-2 py-1 bg-blue-600 rounded shadow-[0_0_10px_rgba(37,99,235,0.5)]">360°-DXF-OVERLAY</button>
+            <div class="flex items-center space-x-2 px-3">
+                <div id="sync-status" class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                <span id="sync-text" class="text-gray-300">WAITING DATA</span>
+            </div>
+        </div>
+
+        <div class="flex space-x-3 mr-2 text-sm">
+            <label class="cursor-pointer px-2 py-1 bg-gray-800 rounded hover:bg-gray-700 transition flex items-center space-x-2">
+                <i class="fas fa-camera"></i> <span>Foto 360 (RAW)</span>
+                <input type="file" id="upload360" accept="image/*" class="hidden">
+            </label>
+            <label class="cursor-pointer px-2 py-1 bg-gray-800 border border-blue-500 rounded hover:bg-gray-700 transition flex items-center space-x-2">
+                <i class="fas fa-file-alt"></i> <span>File .DXF (UTM)</span>
+                <input type="file" id="uploadDXF" accept=".dxf" class="hidden">
+            </label>
+            <label class="cursor-pointer px-2 py-1 bg-emerald-800 rounded hover:bg-emerald-700 transition flex items-center space-x-2">
+                <i class="fas fa-folder-open"></i> <span>Open 360+DXF</span>
+                <input type="file" id="uploadProject" accept=".json,.mocodeproject,image/*" class="hidden">
+            </label>
+            <button id="exportProject" class="px-2 py-1 bg-emerald-600 rounded hover:bg-emerald-500 transition flex items-center space-x-2">
+                <i class="fas fa-file-image"></i> <span>Export 360+DXF</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="ui-layer ui-interactive top-20 left-1/2 -translate-x-1/2 rounded-lg text-xs shadow-xl flex flex-wrap gap-1 items-center">
+        <span class="text-gray-300 mr-1">Zoom <strong id="zoom-percent" class="text-white">100%</strong></span>
+        <button id="zoom-out" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded">−</button>
+        <button id="zoom-reset" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">100%</button>
+        <button id="zoom-in" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded">+</button>
+        <button id="top-view" class="px-2 py-1 bg-blue-700 hover:bg-blue-600 rounded">Top View 90°</button>
+    </div>
+
+    <div class="ui-layer ui-interactive top-20 right-32 rounded-lg text-xs shadow-xl">
+        <label for="background-select" class="text-gray-300 mr-2"><i class="fas fa-palette"></i> Background</label>
+        <select id="background-select" class="bg-select rounded px-2 py-1 text-xs">
+            <option value="panorama">Foto 360</option>
+            <option value="dark">Hitam</option>
+            <option value="white">Putih</option>
+            <option value="gray">Abu-abu</option>
+            <option value="blue">Biru Gelap</option>
+        </select>
+    </div>
+
+    <div id="panorama-calibration" class="ui-layer ui-interactive top-60 right-6 glass-panel p-2 rounded-lg text-xs space-y-2 shadow-xl w-[190px]">
+        <div class="flex items-center justify-between gap-2">
+            <div class="text-yellow-400 font-semibold"><i class="fas fa-compass"></i> Kalibrasi Foto 360</div>
+            <button id="toggle-calibration-panel" type="button" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-200" aria-expanded="true" aria-controls="calibration-panel-content" title="Minimize/Maximize menu kalibrasi">
+                <i id="calibration-toggle-icon" class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+        <div id="calibration-panel-content" class="space-y-2">
+            <div class="text-[8px] text-gray-400 leading-relaxed">Cara mudah: arahkan pandangan ke objek yang sesuai dengan DXF, lalu gunakan tombol di bawah untuk menggeser foto.</div>
+            <div class="flex items-center justify-between gap-2">
+                <span class="text-gray-400">Arah kamera</span>
+                <span id="cal-current-heading" class="font-mono text-blue-400">0.0°</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1">
+                <button data-cal-cardinal="0" class="cal-cardinal px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">U</button>
+                <button data-cal-cardinal="90" class="cal-cardinal px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">T</button>
+                <button data-cal-cardinal="180" class="cal-cardinal px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">S</button>
+                <button data-cal-cardinal="270" class="cal-cardinal px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">B</button>
+            </div>
+            <div class="text-[8px] text-gray-500">Klik U/T/S/B jika objek yang sedang dilihat berada tepat di arah tersebut.</div>
+            <div class="flex items-center gap-1">
+                <button id="cal-nudge-minus15" class="flex-1 px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">−15°</button>
+                <button id="cal-nudge-minus1" class="flex-1 px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">−1°</button>
+                <button id="cal-nudge-plus1" class="flex-1 px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">+1°</button>
+                <button id="cal-nudge-plus15" class="flex-1 px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded">+15°</button>
+            </div>
+            <div class="text-[8px] text-gray-500">Klik −15°/−1°/+1°/+15° untuk pergeseran manual dengan satuan derajat.</div>
+            <div class="flex items-center gap-2">
+                <label for="cal-known-heading" class="text-gray-400 whitespace-nowrap">Azimuth</label>
+                <input id="cal-known-heading" type="number" min="0" max="360" step="0.1" value="0" class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1 text-white font-mono">
+                <button id="calibrate-panorama" class="px-2 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-black font-semibold rounded whitespace-nowrap">Set</button>
+            </div>
+            <div class="flex items-center gap-1">
+                <button id="cal-save-view" class="flex-1 px-2 py-1 bg-blue-700 hover:bg-blue-600 rounded">Simpan</button>
+                <button id="reset-panorama-calibration" class="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-200">Reset</button>
+        </div>
+        <div id="cal-status" class="text-[10px] text-gray-500">Mode: metadata/default</div>
+        </div>
+    </div>
+
+    <div id="dxf-coordinate-panel" class="ui-layer ui-interactive top-44 left-4 glass-panel p-2 rounded-lg text-xs space-y-1 hidden min-w-[200px] shadow-xl">
+        <div class="text-green-400 font-semibold mb-1"><i class="fas fa-crosshairs"></i> Informasi DXF</div>
+        <div id="dxf-selected-type" class="text-gray-300">Entity: -</div>
+        <div id="dxf-selected-layer" class="text-gray-300">Layer: -</div>
+        <div id="dxf-selected-x" class="text-gray-200 font-mono">X (Easting): -</div>
+        <div id="dxf-selected-y" class="text-gray-200 font-mono">Y (Northing): -</div>
+        <div id="dxf-selected-z" class="text-gray-200 font-mono">Z (Elevation): -</div>
+        <div id="dxf-selected-extra" class="text-gray-400 font-mono text-[10px]"></div>
+        <button id="dxf-info-close" class="mt-2 px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">Tutup</button>
+    </div>
+
+    <div class="ui-layer ui-interactive top-20 left-4 space-y-4">
+        <div class="glass-panel p-2 rounded-lg text-xs space-y-1">
+            <div class="text-blue-400 font-semibold mb-1"><i class="fas fa-map-marker-alt"></i> Status Georeference</div>
+            <div id="info-drone-pos" class="text-[10px] text-gray-300">Drone Pos: Belum dimuat</div>
+            <div id="info-dxf-pos" class="text-[10px] text-gray-300">DXF Anchor: Belum dimuat</div>
+        </div>
+    </div>
+
+    <!-- Widget Kompas Mata Angin & Heading/Pitch -->
+    <div class="ui-layer top-20 right-6 text-center">
+        <div class="w-20 h-20 rounded-full glass-panel border-2 border-gray-600 flex items-center justify-center relative mb-2 mx-auto shadow-xl">
+            <!-- Label Mata Angin Utama -->
+            <span class="absolute top-1 text-[10px] font-bold text-red-400">U</span>
+            <span class="absolute right-1 text-[10px] font-bold text-gray-400">T</span>
+            <span class="absolute bottom-1 text-[10px] font-bold text-gray-400">S</span>
+            <span class="absolute left-1 text-[10px] font-bold text-gray-400">B</span>
+            
+            <!-- Jarum Kompas -->
+            <div id="compass-arrow" class="absolute w-1 h-10 bg-red-500 top-1.5 origin-bottom transform transition-transform duration-100 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+            <div class="w-2 h-2 bg-white rounded-full z-10 shadow"></div>
+        </div>
+        <div class="text-xs font-mono bg-black/60 px-2 py-1 rounded-lg backdrop-blur-sm border border-gray-700 shadow-lg">
+            <div id="heading-val" class="font-bold text-blue-400">0° (U)</div>
+            <div id="pitch-val" class="text-gray-400 mt-0.5">Pitch: 0°</div>
+        </div>
+    </div>
+
+    <div class="ui-layer ui-interactive bottom-8 left-1/2 transform -translate-x-1/2 glass-panel rounded-full px-4 py-1 flex items-center space-x-6 w-3/4 max-w-2xl text-xs">
+        <div class="flex-1 flex items-center space-x-3">
+            <span class="text-gray-400 font-semibold w-12">Tinggi:</span>
+            <input type="range" id="sliderZ" min="-100" max="100" value="0" step="0.5">
+            <span id="valZ" class="w-16 text-right font-mono">0.00m</span>
+        </div>
+
+        <div class="flex-1 flex items-center space-x-3">
+            <span class="text-gray-400 font-semibold w-14">Rotasi:</span>
+            <input type="range" id="sliderRot" min="-180" max="180" value="0">
+            <span id="valRot" class="w-12 text-right font-mono">0.0°</span>
+        </div>
+
+        <div class="flex-1 flex items-center space-x-3">
+            <span class="text-gray-400 font-semibold w-12">Skala:</span>
+            <input type="range" id="sliderScale" min="0.1" max="5" step="0.01" value="1">
+            <span id="valScale" class="w-12 text-right font-mono">1.00x</span>
+        </div>
+
+        <button id="btnReset" class="flex flex-col items-center text-gray-400 hover:text-white transition">
+            <i class="fas fa-crosshairs mb-1"></i>
+            <span style="font-size: 0.6rem;">Reset</span>
+        </button>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+
+    <script>
+        // Setup Three.js Scene
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 0, 0.1);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        // Navigasi 360 penuh: dapat berputar ke kiri/kanan, atas/bawah,
+        // termasuk melihat zenith/nadir. Tombol Tampak Atas 90° tetap dipertahankan.
+        controls.enableRotate = true;
+        controls.enablePan = true;
+        controls.minPolarAngle = 0;
+        controls.maxPolarAngle = Math.PI;
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 0.1; 
+        controls.maxDistance = 1000;  
+
+        // Panorama 360 Sphere
+        const sphereGeometry = new THREE.SphereGeometry(500, 60, 40);
+        sphereGeometry.scale(-1, 1, 1); 
+        const textureLoader = new THREE.TextureLoader();
+        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x1e293b, wireframe: true }); 
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        scene.add(sphere);
+        let panoramaLoaded = false;
+        // Heading foto 360 relatif terhadap dunia/UTM. Jika metadata heading tersedia
+        // (GPano PoseHeadingDegrees / GPSImgDirection), panorama otomatis disejajarkan
+        // dengan arah Utara dunia. DXF tidak diputar dan tetap menjadi referensi utama.
+        let panoramaHeadingDeg = 0;
+        let panoramaHeadingSource = "default";
+        let panoramaCalibrationActive = false;
+        let panoramaMetadataHeadingDeg = 0;
+        let panoramaMetadataHeadingSource = "default";
+
+        function normalizeHeading(deg) {
+            let v = Number(deg);
+            if (!Number.isFinite(v)) return 0;
+            v %= 360;
+            if (v < 0) v += 360;
+            return v;
+        }
+
+        function getXmpHeadingFromArrayBuffer(buffer) {
+            try {
+                const bytes = new Uint8Array(buffer);
+                const text = new TextDecoder('latin1').decode(bytes);
+                const patterns = [
+                    /PoseHeadingDegrees\s*=\s*["']?([0-9.+-]+)["']?/i,
+                    /PoseHeading\s*=\s*["']?([0-9.+-]+)["']?/i,
+                    /FlightYawDegree\s*=\s*["']?([0-9.+-]+)["']?/i,
+                    /GimbalYawDegree\s*=\s*["']?([0-9.+-]+)["']?/i,
+                    /CameraYaw\s*=\s*["']?([0-9.+-]+)["']?/i
+                ];
+                for (const re of patterns) {
+                    const m = text.match(re);
+                    if (m) {
+                        const value = Number(m[1]);
+                        if (Number.isFinite(value)) return { value: normalizeHeading(value), source: re.source.split('\\s')[0] };
+                    }
+                }
+            } catch (err) {
+                console.warn('Gagal membaca XMP heading:', err);
+            }
+            return null;
+        }
+
+        function applyPanoramaHeading() {
+            // Pusat panorama (tengah foto) dipetakan ke azimuth panoramaHeadingDeg.
+            // DXF tidak diputar; hanya panorama yang diselaraskan terhadap dunia UTM.
+            sphere.rotation.y = THREE.MathUtils.degToRad(normalizeHeading(panoramaHeadingDeg));
+            console.info(`Panorama heading: ${panoramaHeadingDeg.toFixed(2)}° (${panoramaHeadingSource})`);
+        }
+
+        const calCurrentHeading = document.getElementById('cal-current-heading');
+        const calKnownHeading = document.getElementById('cal-known-heading');
+        const calStatus = document.getElementById('cal-status');
+
+        // Toggle panel kalibrasi: sembunyikan/tampilkan seluruh menu tanpa menghilangkan judul.
+        const calibrationPanelContent = document.getElementById('calibration-panel-content');
+        const toggleCalibrationPanel = document.getElementById('toggle-calibration-panel');
+        const calibrationToggleIcon = document.getElementById('calibration-toggle-icon');
+        let calibrationPanelExpanded = true;
+        toggleCalibrationPanel.addEventListener('click', () => {
+            calibrationPanelExpanded = !calibrationPanelExpanded;
+            calibrationPanelContent.classList.toggle('hidden', !calibrationPanelExpanded);
+            toggleCalibrationPanel.setAttribute('aria-expanded', String(calibrationPanelExpanded));
+            toggleCalibrationPanel.title = calibrationPanelExpanded
+                ? 'Minimize menu kalibrasi'
+                : 'Maximize menu kalibrasi';
+            calibrationToggleIcon.className = calibrationPanelExpanded
+                ? 'fas fa-chevron-up'
+                : 'fas fa-chevron-down';
+        });
+
+        function getCameraWorldHeading() {
+            const dx = controls.target.x - camera.position.x;
+            const dz = controls.target.z - camera.position.z;
+            return (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360;
+        }
+
+        function applyCalibrationDelta(delta, label='manual') {
+            panoramaHeadingDeg = normalizeHeading(panoramaHeadingDeg + Number(delta));
+            panoramaHeadingSource = 'manual calibration';
+            panoramaCalibrationActive = true;
+            applyPanoramaHeading();
+            calStatus.textContent = `Kalibrasi aktif • ${label} • panorama ${panoramaHeadingDeg.toFixed(1)}°`;
+        }
+
+        document.querySelectorAll('.cal-cardinal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const known = Number(this.dataset.calCardinal);
+                const current = getCameraWorldHeading();
+                const delta = known - current;
+                applyCalibrationDelta(delta, `arah ${this.textContent}`);
+            });
+        });
+
+        document.getElementById('cal-nudge-minus15').addEventListener('click', () => applyCalibrationDelta(-15, '−15°'));
+        document.getElementById('cal-nudge-minus1').addEventListener('click', () => applyCalibrationDelta(-1, '−1°'));
+        document.getElementById('cal-nudge-plus1').addEventListener('click', () => applyCalibrationDelta(1, '+1°'));
+        document.getElementById('cal-nudge-plus15').addEventListener('click', () => applyCalibrationDelta(15, '+15°'));
+
+        document.getElementById('calibrate-panorama').addEventListener('click', function() {
+            const known = Number(calKnownHeading.value);
+            if (!Number.isFinite(known)) {
+                alert('Masukkan azimuth yang valid (0–360°).');
+                return;
+            }
+            const current = getCameraWorldHeading();
+            const delta = known - current;
+            applyCalibrationDelta(delta, `azimuth ${normalizeHeading(known).toFixed(1)}°`);
+        });
+
+        document.getElementById('cal-save-view').addEventListener('click', function() {
+            panoramaCalibrationActive = true;
+            panoramaHeadingSource = 'saved manual calibration';
+            calStatus.textContent = `Posisi panorama disimpan • ${panoramaHeadingDeg.toFixed(1)}°`;
+        });
+
+        document.getElementById('reset-panorama-calibration').addEventListener('click', function() {
+            panoramaCalibrationActive = false;
+            panoramaHeadingDeg = panoramaMetadataHeadingDeg;
+            panoramaHeadingSource = panoramaMetadataHeadingSource;
+            applyPanoramaHeading();
+            calStatus.textContent = `Mode: ${panoramaHeadingSource}`;
+        });
+
+        const backgroundSelect = document.getElementById('background-select');
+        const backgroundColors = {
+            dark: 0x050505,
+            white: 0xf4f4f4,
+            gray: 0x808080,
+            blue: 0x1a1a2e
+        };
+        function applyBackgroundMode(mode) {
+            if (mode === 'panorama' && panoramaLoaded) {
+                sphere.visible = true;
+                scene.background = new THREE.Color(0x1a1a2e);
+            } else {
+                sphere.visible = false;
+                scene.background = new THREE.Color(backgroundColors[mode] ?? backgroundColors.blue);
+            }
+        }
+        backgroundSelect.addEventListener('change', () => applyBackgroundMode(backgroundSelect.value));
+
+        // DXF Group Container
+        const dxfGroup = new THREE.Group();
+        scene.add(dxfGroup);
+
+        // Visual feedback untuk entitas DXF yang sedang dipilih.
+        const dxfSelectionGroup = new THREE.Group();
+        dxfSelectionGroup.name = 'DXF_SELECTION_HIGHLIGHT';
+        dxfSelectionGroup.renderOrder = 1000;
+        scene.add(dxfSelectionGroup);
+
+        let droneUTM = { x: null, y: null };
+        let rawDxfData = null;
+        let rawDxfText = "";
+        let currentPanoramaDataUrl = null;
+        let loadedProjectName = "";
+        let dxfAnchor = { x: 0, y: 0 };
+
+        function convertDMSToDeg(dms, ref) {
+            if (!dms) return 0;
+            let floatDeg = dms[0] + dms[1] / 60 + dms[2] / 3600;
+            if (ref === "S" || ref === "W") floatDeg *= -1;
+            return floatDeg;
+        }
+
+        function getUTMProjString(lon) {
+            let zone = Math.floor((lon + 180) / 6) + 1;
+            return `+proj=utm +zone=${zone} +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs`;
+        }
+
+        // Helper untuk Konversi Derajat ke Nama Mata Angin
+        function getCardinalDirection(angle) {
+            const directions = ['U', 'TL', 'T', 'TG', 'S', 'BD', 'B', 'BL'];
+            const index = Math.round((angle % 360) / 45);
+            return directions[index % 8];
+        }
+
+        // Kontrol zoom universal dengan indikator persentase yang selalu diperbarui.
+        const zoomPercentEl = document.getElementById('zoom-percent');
+        const DEFAULT_FOV = 75;
+        let zoomPercent = 100;
+        function updateZoomPercent() {
+            if (panoramaLoaded && backgroundSelect.value === 'panorama') {
+                zoomPercent = Math.round((DEFAULT_FOV / camera.fov) * 100);
+            } else {
+                const distance = camera.position.distanceTo(controls.target);
+                const baseDistance = Math.max(1, controls.target.distanceTo(new THREE.Vector3(0, 0, 0)));
+                // Untuk mode DXF, gunakan perubahan jarak relatif sebagai indikator.
+                zoomPercent = Math.max(10, Math.min(1000, Math.round((100 * 10) / Math.max(distance, 0.001))));
+            }
+            if (zoomPercentEl) zoomPercentEl.textContent = `${zoomPercent}%`;
+        }
+        function zoomScene(direction) {
+            const factor = direction > 0 ? 0.82 : 1.22;
+            if (panoramaLoaded && backgroundSelect.value === 'panorama') {
+                camera.fov = Math.max(10, Math.min(100, camera.fov * factor));
+                camera.updateProjectionMatrix();
+            } else {
+                const offset = camera.position.clone().sub(controls.target);
+                offset.multiplyScalar(factor);
+                const len = offset.length();
+                if (len >= 0.05 && len <= 1000000) camera.position.copy(controls.target).add(offset);
+                controls.update();
+            }
+            updateZoomPercent();
+        }
+        document.getElementById('zoom-in').addEventListener('click', () => zoomScene(1));
+        document.getElementById('zoom-out').addEventListener('click', () => zoomScene(-1));
+        document.getElementById('zoom-reset').addEventListener('click', () => {
+            camera.fov = DEFAULT_FOV;
+            camera.updateProjectionMatrix();
+            updateZoomPercent();
+        });
+        document.getElementById('top-view').addEventListener('click', () => {
+            const box = new THREE.Box3().setFromObject(dxfGroup);
+            const center = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+            const size = box.isEmpty() ? 100 : Math.max(box.getSize(new THREE.Vector3()).x, box.getSize(new THREE.Vector3()).z, 10);
+            controls.target.copy(center);
+            camera.position.set(center.x, center.y + size * 1.8, center.z + 0.001);
+            camera.lookAt(center);
+            controls.update();
+            updateZoomPercent();
+        });
+        renderer.domElement.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            zoomScene(event.deltaY < 0 ? 1 : -1);
+        }, {passive:false});
+        controls.addEventListener('change', updateZoomPercent);
+        updateZoomPercent();
+
+        // Upload Foto 360 & Ekstrak GPS EXIF
+        document.getElementById('upload360').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                currentPanoramaDataUrl = dataUrl;
+                textureLoader.load(dataUrl, function(texture) {
+                    sphere.material.dispose();
+                    sphere.material = new THREE.MeshBasicMaterial({ map: texture });
+                    panoramaLoaded = true;
+                    applyPanoramaHeading();
+                    applyBackgroundMode(backgroundSelect.value);
+                });
+            };
+            reader.readAsDataURL(file);
+
+            // Baca heading dari XMP/GPano. Ini penting karena banyak kamera/drone 360
+            // menyimpan arah kamera di PoseHeadingDegrees, bukan di EXIF standar.
+            const headingReader = new FileReader();
+            headingReader.onload = function(e) {
+                const xmp = getXmpHeadingFromArrayBuffer(e.target.result);
+                if (xmp) {
+                    panoramaMetadataHeadingDeg = xmp.value;
+                    panoramaMetadataHeadingSource = 'XMP/GPano';
+                    if (!panoramaCalibrationActive) {
+                        panoramaHeadingDeg = xmp.value;
+                        panoramaHeadingSource = 'XMP/GPano';
+                    }
+                }
+                applyPanoramaHeading();
+            };
+            headingReader.readAsArrayBuffer(file);
+
+            EXIF.getData(file, function() {
+                const latTag = EXIF.getTag(this, "GPSLatitude");
+                const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                const lonTag = EXIF.getTag(this, "GPSLongitude");
+                const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+                const imgDirection = EXIF.getTag(this, "GPSImgDirection");
+
+                // Fallback heading: EXIF GPSImgDirection jika XMP/GPano tidak tersedia.
+                if (panoramaHeadingSource === 'default' && imgDirection != null) {
+                    const h = (typeof imgDirection === 'object' && imgDirection.numerator != null && imgDirection.denominator)
+                        ? Number(imgDirection.numerator) / Number(imgDirection.denominator)
+                        : Number(imgDirection);
+                    if (Number.isFinite(h)) {
+                        panoramaMetadataHeadingDeg = normalizeHeading(h);
+                        panoramaMetadataHeadingSource = 'EXIF GPSImgDirection';
+                        if (!panoramaCalibrationActive) {
+                            panoramaHeadingDeg = panoramaMetadataHeadingDeg;
+                            panoramaHeadingSource = panoramaMetadataHeadingSource;
+                            applyPanoramaHeading();
+                        }
+                    }
+                }
+
+                if (latTag && lonTag) {
+                    const lat = convertDMSToDeg(latTag, latRef);
+                    const lon = convertDMSToDeg(lonTag, lonRef);
+                    
+                    const utmProj = getUTMProjString(lon);
+                    const coords = proj4('EPSG:4326', utmProj, [lon, lat]);
+                    
+                    droneUTM = { x: coords[0], y: coords[1] };
+                    
+                    document.getElementById('info-drone-pos').innerText = `Drone UTM: X=${droneUTM.x.toFixed(1)}, Y=${droneUTM.y.toFixed(1)}`;
+                    document.getElementById('sync-status').className = "w-2 h-2 bg-green-500 rounded-full animate-pulse";
+                    document.getElementById('sync-text').innerText = `GPS SYNCED • FOTO ${Math.round(panoramaHeadingDeg)}°`;
+
+                    if (rawDxfData) processAndRenderDXF(rawDxfData);
+                } else {
+                    alert("Metadata GPS EXIF tidak ditemukan pada foto 360 ini. Menggunakan titik referensi default (0,0).");
+                    droneUTM = { x: 0, y: 0 };
+                    if (rawDxfData) processAndRenderDXF(rawDxfData);
+                }
+            });
+        });
+
+        function downloadText(filename, text, type='application/json') {
+            const blob = new Blob([text], {type});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        }
+        // ============================================================
+        // EXPORT PANORAMA 360 + DXF
+        // ------------------------------------------------------------
+        // IMPORTANT:
+        // Export TIDAK lagi mengambil screenshot perspektif dari kamera UI.
+        // Screenshot perspektif hanya menghasilkan foto biasa yang ditempel
+        // ke kanvas 2:1, bukan panorama 360 yang sesungguhnya.
+        //
+        // Sekarang scene direkam dari titik pusat panorama menggunakan
+        // THREE.CubeCamera (6 arah @ 90°), lalu diproyeksikan kembali ke
+        // equirectangular 2:1. Dengan demikian foto 360 + DXF benar-benar
+        // menjadi SATU gambar panoramic 360 dan dapat dimuat ulang sebagai
+        // Foto 360.
+        // ============================================================
+        function canvasToBlob(canvas, type='image/jpeg', quality=0.95) {
+            return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+        }
+
+        // Tambahkan metadata Google Photo Sphere / GPano ke JPEG agar
+        // aplikasi yang mendukung metadata panorama dapat mengenalinya
+        // sebagai panorama 360 equirectangular.
+        async function addGPanoXmpToJpeg(blob, width, height) {
+            const buffer = await blob.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+
+            if (bytes.length < 2 || bytes[0] !== 0xFF || bytes[1] !== 0xD8) {
+                return blob;
+            }
+
+            const xmp = `<?xpacket begin="\\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>` +
+                `<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="MOCODESTA">` +
+                `<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">` +
+                `<rdf:Description xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" ` +
+                `GPano:ProjectionType="equirectangular" ` +
+                `GPano:UsePanoramaViewer="True" ` +
+                `GPano:FullPanoWidthPixels="${width}" ` +
+                `GPano:FullPanoHeightPixels="${height}" ` +
+                `GPano:CroppedAreaImageWidthPixels="${width}" ` +
+                `GPano:CroppedAreaImageHeightPixels="${height}" ` +
+                `GPano:FullPanoWidthPixels="${width}" ` +
+                `GPano:CroppedAreaLeftPixels="0" ` +
+                `GPano:CroppedAreaTopPixels="0"/>` +
+                `</rdf:RDF></x:xmpmeta><?xpacket end="w"?>`;
+
+            const header = new TextEncoder().encode('http://ns.adobe.com/xap/1.0/\\0' + xmp);
+            const segmentLength = header.length + 2;
+            if (segmentLength > 0xFFFF) return blob;
+
+            const app1 = new Uint8Array(2 + 2 + header.length);
+            app1[0] = 0xFF; app1[1] = 0xE1;
+            app1[2] = (segmentLength >> 8) & 0xFF;
+            app1[3] = segmentLength & 0xFF;
+            app1.set(header, 4);
+
+            const out = new Uint8Array(bytes.length + app1.length);
+            out.set(bytes.subarray(0, 2), 0); // SOI
+            out.set(app1, 2);                 // XMP APP1
+            out.set(bytes.subarray(2), 2 + app1.length);
+            return new Blob([out], { type: 'image/jpeg' });
+        }
+
+
+        function buildExportThickDXFLines(root, radius = 0.035) {
+            const group = new THREE.Group();
+            group.name = 'DXF_EXPORT_THICK_LINES';
+            group.renderOrder = 3000;
+            group.frustumCulled = false;
+            root.updateMatrixWorld(true);
+            root.traverse(obj => {
+                if (!(obj.isLine || obj.isLineSegments) || !obj.geometry || !obj.geometry.attributes.position) return;
+                const pos = obj.geometry.attributes.position;
+                const pts = [];
+                for (let i=0; i<pos.count; i++) {
+                    const q = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(obj.matrixWorld);
+                    pts.push(q);
+                }
+                const step = obj.isLineSegments ? 2 : 1;
+                for (let i=0; i+1<pts.length; i+=step) {
+                    const a=pts[i], b=pts[i+1];
+                    const d=b.clone().sub(a), len=d.length();
+                    if (len < 1e-8) continue;
+                    const mid=a.clone().add(b).multiplyScalar(0.5);
+                    const geo=new THREE.CylinderGeometry(radius, radius, len, 8, 1, false);
+                    const mat=new THREE.MeshBasicMaterial({
+                        color: obj.material && obj.material.color ? obj.material.color.getHex() : 0xffffff,
+                        transparent:false, opacity:1, depthTest:false, depthWrite:false
+                    });
+                    const cyl=new THREE.Mesh(geo,mat);
+                    cyl.position.copy(mid);
+                    cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
+                    cyl.renderOrder=3000; cyl.frustumCulled=false;
+                    group.add(cyl);
+                }
+            });
+            scene.add(group);
+            return group;
+        }
+
+        async function exportTrueEquirectangular360() {
+            if (!panoramaLoaded) {
+                alert('Load Foto 360 terlebih dahulu. Export gabungan membutuhkan foto 360 sebagai dasar panorama.');
+                return;
+            }
+
+            /*
+             * EXPORT HIGH QUALITY 360 + DXF
+             * - Output tetap equirectangular 2:1 dan terbaca sebagai Foto 360.
+             * - Perbaikan orientasi: vUv.y dikonversi ke latitude dengan arah yang benar.
+             * - readRenderTargetPixels tetap dibalik baris sekali saja (konversi WebGL -> Canvas).
+             * - Resolusi adaptif: sampai 8192x4096 pada GPU yang mendukung.
+             * - Cubemap mengikuti resolusi export agar line, titik, dan teks DXF tidak terlalu blur.
+             * - JPEG quality 1.0 untuk meminimalkan artefak kompresi.
+             */
+            const maxTextureSize = renderer.capabilities.maxTextureSize || 4096;
+
+            // Jangan memaksa resolusi yang melampaui kemampuan GPU/perangkat.
+            // Desktop modern: 8192x4096. Mobile/GPU terbatas: turun otomatis.
+            const exportWidth = Math.min(8192, maxTextureSize);
+            const exportHeight = Math.round(exportWidth / 2);
+
+            // Cubemap 4096/face memberi kualitas jauh lebih baik daripada 1024/2048,
+            // tetapi tetap aman pada perangkat dengan batas texture size lebih rendah.
+            const cubeSize = Math.min(4096, maxTextureSize);
+
+            if (exportWidth < 2048) {
+                alert(`GPU/perangkat hanya mendukung export hingga ${exportWidth} px. Hasil tetap 360 equirectangular, tetapi resolusi mengikuti kemampuan perangkat.`);
+            }
+
+            const oldSelectionVisible = dxfSelectionGroup.visible;
+            const oldSphereVisible = sphere.visible;
+            const oldDxfVisible = dxfGroup.visible;
+            const oldCameraPosition = camera.position.clone();
+            const oldCameraRotation = camera.rotation.clone();
+            const oldTarget = controls.target.clone();
+            const oldPixelRatio = renderer.getPixelRatio();
+
+            let cubeTarget = null;
+            let cubeCamera = null;
+            let exportTarget = null;
+            let exportGeometry = null;
+            let exportMaterial = null;
+
+            try {
+                dxfSelectionGroup.visible = false;
+
+                // Export tidak boleh bergantung pada zoom/FOV kamera UI.
+                // Cubemap selalu diambil tepat dari pusat panorama.
+                cubeTarget = new THREE.WebGLCubeRenderTarget(cubeSize, {
+                    format: THREE.RGBAFormat,
+                    type: THREE.UnsignedByteType,
+                    generateMipmaps: false,
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    anisotropy: renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1,
+                    depthBuffer: true,
+                    stencilBuffer: false
+                });
+
+                cubeCamera = new THREE.CubeCamera(0.01, 1000000, cubeTarget);
+                cubeCamera.position.set(0, 0, 0);
+                scene.add(cubeCamera);
+
+                // Pastikan semua data yang terlihat pada viewer ikut masuk export.
+                sphere.visible = true;
+                dxfGroup.visible = oldDxfVisible;
+
+                // Rendering kualitas tinggi.
+                renderer.setPixelRatio(1);
+
+                // EXPORT DXF ENHANCEMENT:
+                // Samakan tampilan dengan viewport yang sudah dikalibrasi, tetapi
+                // pertahankan detail DXF ketika diproyeksikan ke cubemap.
+                // Sprite teks/titik sering terlihat terlalu kecil setelah proses
+                // cubemap -> equirectangular, sehingga hanya selama export
+                // ukuran visual dan opacity-nya diperkuat lalu dipulihkan.
+                const exportDxfState = [];
+                dxfGroup.traverse((obj) => {
+                    const state = { obj, scale: obj.scale.clone(), opacity: null, size: null, color: null, linewidth: null };
+                    if (obj.material) {
+                        if (Array.isArray(obj.material)) {
+                            state.opacity = obj.material.map(m => m.opacity);
+                            obj.material.forEach(m => { m.transparent = true; m.opacity = 1.0; });
+                        } else {
+                            state.opacity = [obj.material.opacity];
+                            state.color = obj.material.color ? obj.material.color.getHex() : null;
+                            state.linewidth = obj.material.linewidth !== undefined ? obj.material.linewidth : null;
+                            obj.material.transparent = true;
+                            obj.material.opacity = 1.0;
+                            if (obj.material.color) obj.material.color.offsetHSL(0, 0, 0.18);
+                            if (obj.material.linewidth !== undefined) obj.material.linewidth = Math.max(obj.material.linewidth, 12);
+                            if (obj.material.size !== undefined) {
+                                state.size = obj.material.size;
+                                obj.material.size = Math.max(obj.material.size, 18);
+                            }
+                        }
+                    }
+                    // Text and point sprites need a modest export-only scale boost.
+                    if (obj.isSprite) obj.scale.multiplyScalar(1.35);
+                    if (obj.isPoints) obj.scale.multiplyScalar(2.0);
+                    obj.renderOrder = Math.max(Number(obj.renderOrder) || 0, 1000);
+                    // Pastikan DXF tidak tertutup oleh permukaan panorama.
+                    if (obj.material && obj.material.depthTest !== undefined) {
+                        obj.material.depthTest = false;
+                        obj.material.depthWrite = false;
+                    }
+                    exportDxfState.push(state);
+                });
+
+                // Render line/polyline as real 3D cylinders during export.
+                // This avoids WebGL linewidth limitations that cause broken/faint lines.
+                const exportThickDXF = buildExportThickDXFLines(dxfGroup, 0.045);
+
+                cubeCamera.update(renderer, scene);
+
+                /*
+                 * Cubemap -> equirectangular.
+                 * IMPORTANT:
+                 * readRenderTargetPixels() mengembalikan baris dari bawah ke atas,
+                 * sehingga nanti kita hanya membalik baris sekali saat masuk Canvas.
+                 *
+                 * Untuk equirectangular Canvas:
+                 *   vUv.y = 1 -> latitude +90° (atas / North pole)
+                 *   vUv.y = 0 -> latitude -90° (bawah / South pole)
+                 *
+                 * Versi lama memakai (0.5 - vUv.y), sehingga utara/selatan terbalik.
+                 */
+                const exportScene = new THREE.Scene();
+                const exportCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+                exportGeometry = new THREE.PlaneGeometry(2, 2);
+                exportMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        tCube: { value: cubeTarget.texture }
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform samplerCube tCube;
+                        varying vec2 vUv;
+                        const float PI = 3.1415926535897932384626433832795;
+
+                        void main() {
+                            // Equirectangular longitude: -180° .. +180°
+                            float lon = (vUv.x - 0.5) * 2.0 * PI;
+
+                            // FIX ORIENTASI VERTIKAL:
+                            // top canvas = +90° latitude, bottom = -90° latitude.
+                            float lat = (vUv.y - 0.5) * PI;
+
+                            float cosLat = cos(lat);
+                            vec3 dir = normalize(vec3(
+                                sin(lon) * cosLat,
+                                sin(lat),
+                                -cos(lon) * cosLat
+                            ));
+
+                            gl_FragColor = textureCube(tCube, dir);
+                        }
+                    `,
+                    depthTest: false,
+                    depthWrite: false
+                });
+
+                const exportQuad = new THREE.Mesh(exportGeometry, exportMaterial);
+                exportScene.add(exportQuad);
+
+                exportTarget = new THREE.WebGLRenderTarget(exportWidth, exportHeight, {
+                    format: THREE.RGBAFormat,
+                    type: THREE.UnsignedByteType,
+                    depthBuffer: false,
+                    stencilBuffer: false,
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    anisotropy: renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1
+                });
+
+                renderer.setRenderTarget(exportTarget);
+                renderer.render(exportScene, exportCamera);
+
+                const pixels = new Uint8Array(exportWidth * exportHeight * 4);
+                renderer.readRenderTargetPixels(
+                    exportTarget,
+                    0, 0,
+                    exportWidth,
+                    exportHeight,
+                    pixels
+                );
+                renderer.setRenderTarget(null);
+
+                // WebGL origin = bottom-left; Canvas origin = top-left.
+                // Balik BARIS tepat satu kali. Jangan melakukan flip kedua.
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = exportWidth;
+                exportCanvas.height = exportHeight;
+
+                const ctx = exportCanvas.getContext('2d', {
+                    alpha: false,
+                    willReadFrequently: false
+                });
+
+                const imageData = ctx.createImageData(exportWidth, exportHeight);
+                const rowBytes = exportWidth * 4;
+
+                for (let y = 0; y < exportHeight; y++) {
+                    const srcStart = (exportHeight - 1 - y) * rowBytes;
+                    const dstStart = y * rowBytes;
+                    imageData.data.set(
+                        pixels.subarray(srcStart, srcStart + rowBytes),
+                        dstStart
+                    );
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+
+                // JPEG quality maksimum untuk menjaga detail panorama + garis DXF.
+                // 1.0 mengurangi blur/artefak kompresi yang terlihat pada export lama.
+                let blob = await canvasToBlob(exportCanvas, 'image/jpeg', 1.0);
+                if (!blob) throw new Error('Browser gagal membuat file JPEG export.');
+
+                blob = await addGPanoXmpToJpeg(blob, exportWidth, exportHeight);
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `panorama-360-DXF-GABUNGAN-${exportWidth}x${exportHeight}-HQ.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+                if (exportThickDXF) {
+                    exportThickDXF.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+                    scene.remove(exportThickDXF);
+                }
+
+                // Pulihkan tampilan DXF persis seperti sebelum export.
+                for (const state of exportDxfState) {
+                    const obj = state.obj;
+                    obj.scale.copy(state.scale);
+                    if (obj.material && state.opacity) {
+                        if (Array.isArray(obj.material)) {
+                            obj.material.forEach((m, i) => { m.opacity = state.opacity[i]; });
+                        } else {
+                            obj.material.opacity = state.opacity[0];
+                            if (state.color !== null && obj.material.color) obj.material.color.setHex(state.color);
+                            if (state.linewidth !== null && obj.material.linewidth !== undefined) obj.material.linewidth = state.linewidth;
+                            if (state.size !== null && obj.material.size !== undefined) obj.material.size = state.size;
+                        }
+                    }
+                }
+
+                // Bersihkan object export.
+                exportScene.remove(exportQuad);
+                exportGeometry.dispose();
+                exportMaterial.dispose();
+
+            } finally {
+                if (cubeCamera) scene.remove(cubeCamera);
+                if (cubeTarget) cubeTarget.dispose();
+                if (exportTarget) exportTarget.dispose();
+
+                // Pulihkan tampilan UI persis seperti sebelum export.
+                dxfSelectionGroup.visible = oldSelectionVisible;
+                sphere.visible = oldSphereVisible;
+                dxfGroup.visible = oldDxfVisible;
+
+                camera.position.copy(oldCameraPosition);
+                camera.rotation.copy(oldCameraRotation);
+                controls.target.copy(oldTarget);
+                controls.update();
+
+                renderer.setPixelRatio(oldPixelRatio);
+                renderer.setRenderTarget(null);
+                renderer.render(scene, camera);
+            }
+        }
+
+
+        document.getElementById('exportProject').addEventListener('click', () => {
+            exportTrueEquirectangular360().catch(err => {
+                console.error('Export panorama 360 gagal:', err);
+                alert('Export panorama 360 gagal: ' + (err && err.message ? err.message : err));
+                renderer.setRenderTarget(null);
+            });
+        });
+
+        // Project loader menerima FOTO PNG/JPG hasil gabungan maupun project lama JSON.
+        document.getElementById('uploadProject').addEventListener('change', function(event) {
+            const file = event.target.files[0]; if (!file) return;
+            loadedProjectName = file.name;
+            if (file.type && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    currentPanoramaDataUrl = reader.result;
+                    textureLoader.load(currentPanoramaDataUrl, texture => {
+                        sphere.material.dispose();
+                        sphere.material = new THREE.MeshBasicMaterial({map:texture});
+                        panoramaLoaded = true;
+                        panoramaHeadingDeg = 0;
+                        panoramaHeadingSource = 'foto gabungan';
+                        applyPanoramaHeading();
+                        backgroundSelect.value = 'panorama';
+                        applyBackgroundMode('panorama');
+                        document.getElementById('sync-text').innerText = 'FOTO GABUNGAN LOADED';
+                    });
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const project = JSON.parse(reader.result);
+                    if (project.format !== 'MOCODESTA-360-DXF-PROJECT') throw new Error('Format project tidak dikenali');
+                    if (project.panoramaDataUrl) {
+                        currentPanoramaDataUrl = project.panoramaDataUrl;
+                        textureLoader.load(project.panoramaDataUrl, texture => {
+                            sphere.material.dispose(); sphere.material = new THREE.MeshBasicMaterial({map:texture});
+                            panoramaLoaded = true; applyPanoramaHeading(); applyBackgroundMode(project.background || 'panorama');
+                        });
+                    }
+                    if (project.dxfText) {
+                        rawDxfText = project.dxfText; rawDxfData = new DxfParser().parseSync(rawDxfText); processAndRenderDXF(rawDxfData);
+                    }
+                    if (project.droneUTM) droneUTM = project.droneUTM;
+                    if (project.dxfAnchor) dxfAnchor = project.dxfAnchor;
+                    if (Number.isFinite(project.panoramaHeadingDeg)) panoramaHeadingDeg = project.panoramaHeadingDeg;
+                    panoramaCalibrationActive = !!project.panoramaCalibrationActive;
+                    panoramaHeadingSource = panoramaCalibrationActive ? 'project calibration' : 'project';
+                    applyPanoramaHeading();
+                    document.getElementById('info-drone-pos').innerText = droneUTM.x != null ? `Drone UTM: X=${Number(droneUTM.x).toFixed(1)}, Y=${Number(droneUTM.y).toFixed(1)}` : 'Drone Pos: Belum dimuat';
+                } catch (err) { alert('Gagal membuka project: ' + err.message); }
+            };
+            reader.readAsText(file);
+        });
+
+        // Upload DXF
+        document.getElementById('uploadDXF').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parser = new DxfParser();
+                    rawDxfText = e.target.result;
+                    rawDxfData = parser.parseSync(e.target.result);
+                    processAndRenderDXF(rawDxfData);
+                } catch (err) {
+                    alert("Gagal memparsing file DXF.");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // ============================================================
+        // DXF RENDER ENGINE
+        // - membaca warna entity (TrueColor / ACI / ByLayer)
+        // - membaca TEXT & MTEXT
+        // - LINE / POLYLINE / LWPOLYLINE
+        // - ARC / CIRCLE / ELLIPSE
+        // - memakai Z dari DXF bila tersedia
+        // - mendukung INSERT sederhana (block reference)
+        // ============================================================
+
+        const ACI_COLORS = {
+            1: 0xFF0000, 2: 0xFFFF00, 3: 0x00FF00, 4: 0x00FFFF,
+            5: 0x0000FF, 6: 0xFF00FF, 7: 0xFFFFFF, 8: 0x414141,
+            9: 0x808080, 10: 0xFF0000, 11: 0xFF7F7F, 12: 0xA50000,
+            13: 0xA55050, 14: 0xA50000, 15: 0xA55050, 16: 0x7F0000,
+            17: 0x7F3F3F, 18: 0xFF3F00, 19: 0xFF9F7F, 20: 0xA52A00,
+            21: 0xA5523F, 22: 0x7F1F00, 23: 0x7F4F3F, 30: 0xFF7F00,
+            31: 0xFFBF7F, 32: 0xA55200, 33: 0xA57A3F, 34: 0x7F3F00,
+            35: 0x7F5F3F, 40: 0xFFBF00, 41: 0xFFDF7F, 42: 0xA57A00,
+            43: 0xA5903F, 44: 0x7F5F00, 45: 0x7F6F3F, 50: 0xFFFF00,
+            51: 0xFFFF7F, 52: 0xA5A500, 53: 0xA5A53F, 54: 0x7F7F00,
+            55: 0x7F7F3F, 60: 0x7FFF00, 61: 0xBFFF7F, 62: 0x7FA500,
+            63: 0x90A53F, 64: 0x5F7F00, 65: 0x6F7F3F, 70: 0x00FF00,
+            71: 0x7FFF7F, 72: 0x00A500, 73: 0x3FA53F, 74: 0x007F00,
+            75: 0x3F7F3F, 80: 0x00FF7F, 81: 0x7FFFBF, 82: 0x00A57F,
+            83: 0x3FA57A, 84: 0x007F5F, 85: 0x3F7F6F, 90: 0x00FFFF,
+            91: 0x7FFFFF, 92: 0x00A5A5, 93: 0x3FA5A5, 94: 0x007F7F,
+            95: 0x3F7F7F, 100: 0x007FFF, 101: 0x7FBFFF, 102: 0x007FA5,
+            103: 0x3F7FA5, 104: 0x005F7F, 105: 0x3F6F7F, 110: 0x0000FF,
+            111: 0x7F7FFF, 112: 0x0000A5, 113: 0x3F3FA5, 114: 0x00007F,
+            115: 0x3F3F7F, 120: 0x7F00FF, 121: 0xBF7FFF, 122: 0x7F00A5,
+            123: 0x7F3FA5, 124: 0x3F007F, 125: 0x5F3F7F, 130: 0xFF00FF,
+            131: 0xFF7FFF, 132: 0xA500A5, 133: 0xA53FA5, 134: 0x7F007F,
+            135: 0x7F3F7F, 140: 0xFF007F, 141: 0xFF7FBF, 142: 0xA5007F,
+            143: 0xA53F7F, 144: 0x7F005F, 145: 0x7F3F6F, 150: 0xFF0000,
+            151: 0xFF7F7F, 152: 0xA50000, 153: 0xA53F3F, 154: 0x7F0000,
+            155: 0x7F3F3F, 256: 0xFFFFFF, 257: 0xFFFFFF
+        };
+
+        function getLayerInfo(dxf, layerName) {
+            const layers = dxf && dxf.tables && dxf.tables.layer && dxf.tables.layer.layers;
+            return (layers && layerName && layers[layerName]) ? layers[layerName] : null;
+        }
+
+        function colorFromDXF(ent, dxf) {
+            // dxf-parser 1.1.2 stores true color (420) directly in ent.color.
+            // ACI (62) is stored as an RGB integer by the parser.
+            const raw = ent && ent.color;
+
+            if (typeof raw === 'number' && Number.isFinite(raw)) {
+                // TrueColor: already 0xRRGGBB
+                if (raw >= 0 && raw <= 0xFFFFFF) return raw;
+            }
+
+            const layer = getLayerInfo(dxf, ent && ent.layer);
+
+            // 256 = BYLAYER, 0 = BYBLOCK
+            if (!raw || ent.colorIndex === 256 || ent.colorIndex === 0) {
+                if (layer && typeof layer.color === 'number' && layer.color >= 0) {
+                    return layer.color & 0xFFFFFF;
+                }
+                if (layer && layer.colorIndex && ACI_COLORS[layer.colorIndex]) {
+                    return ACI_COLORS[layer.colorIndex];
+                }
+            }
+
+            const idx = Math.abs(Number(ent && ent.colorIndex));
+            if (ACI_COLORS[idx]) return ACI_COLORS[idx];
+
+            // Fallback berdasarkan layer, kemudian putih.
+            if (layer && typeof layer.color === 'number') return layer.color & 0xFFFFFF;
+            return 0xFFFFFF;
+        }
+
+        function cleanMText(value) {
+            if (value == null) return "";
+            return String(value)
+                .replace(/\\P/gi, "\n")
+                .replace(/\\~|\\ /g, " ")
+                .replace(/\\[A-Za-z][^;]*;/g, "")
+                .replace(/\{|\}/g, "")
+                .replace(/\^\s*J/g, "\n")
+                .trim();
+        }
+
+        // DXF -> Three.js coordinate conversion.
+        // IMPORTANT: DXF coordinates are stored in WCS/OCS depending on entity.
+        // We first resolve the entity point to WCS, then convert WCS(X,Y,Z) to
+        // Three.js(X,Z,-Y). This preserves XYZ instead of treating every
+        // vertex as a flat XY point.
+        function normalizeVec3(v, fallback) {
+            const x = Number(v && v.x), y = Number(v && v.y), z = Number(v && v.z);
+            const out = new THREE.Vector3(
+                Number.isFinite(x) ? x : fallback.x,
+                Number.isFinite(y) ? y : fallback.y,
+                Number.isFinite(z) ? z : fallback.z
+            );
+            if (out.lengthSq() < 1e-24) return fallback.clone();
+            return out.normalize();
+        }
+
+        function getEntityNormal(ent) {
+            const e = ent && (ent.extrusionDirection || ent.extrusion || ent.normal);
+            return normalizeVec3(e, new THREE.Vector3(0, 0, 1));
+        }
+
+        // Build the AutoCAD Arbitrary Axis System (OCS -> WCS).
+        function ocsBasis(normal) {
+            const n = normalizeVec3(normal, new THREE.Vector3(0, 0, 1));
+            let ax;
+            if (Math.abs(n.x) < 1 / 64 && Math.abs(n.y) < 1 / 64) {
+                ax = new THREE.Vector3(0, 1, 0).cross(n).normalize();
+            } else {
+                ax = new THREE.Vector3(0, 0, 1).cross(n).normalize();
+            }
+            const ay = n.clone().cross(ax).normalize();
+            return { xAxis: ax, yAxis: ay, zAxis: n };
+        }
+
+        function ocsToWcs(v, normal) {
+            const b = ocsBasis(normal);
+            const x = Number(v && v.x) || 0;
+            const y = Number(v && v.y) || 0;
+            const z = Number(v && v.z) || 0;
+            return b.xAxis.clone().multiplyScalar(x)
+                .add(b.yAxis.clone().multiplyScalar(y))
+                .add(b.zAxis.clone().multiplyScalar(z));
+        }
+
+        function pointToThree(v, anchorX, anchorY, zOverride = null) {
+            return new THREE.Vector3(
+                Number(v && v.x || 0) - anchorX,
+                Number(zOverride == null ? (v && v.z || 0) : zOverride),
+                -(Number(v && v.y || 0) - anchorY)
+            );
+        }
+
+        function entityPointToWcs(ent, v, options = {}) {
+            const type = String(ent && ent.type || '').toUpperCase();
+            let p = {
+                x: Number(v && v.x) || 0,
+                y: Number(v && v.y) || 0,
+                z: Number(v && v.z) || 0
+            };
+
+            // LWPOLYLINE vertex coordinates are OCS. Its elevation is the
+            // entity-wide Z when the vertex itself has no Z value.
+            if (type === 'LWPOLYLINE') {
+                const elevation = Number(ent.elevation);
+                if (Number.isFinite(elevation) && !Number.isFinite(Number(v && v.z))) {
+                    p.z = elevation;
+                }
+                const ex = ent.extrusionDirection || ent.extrusion;
+                if (ex) return ocsToWcs(p, ex);
+                // Default OCS normal is +Z, so this is already WCS.
+                return p;
+            }
+
+            // 2D POLYLINE vertex data is OCS; 3D POLYLINE is WCS.
+            if (type === 'POLYLINE' && !(Number(ent.flags || 0) & 8)) {
+                const elevation = Number(ent.elevation && (ent.elevation.z != null ? ent.elevation.z : ent.elevation));
+                if (Number.isFinite(elevation) && !Number.isFinite(Number(v && v.z))) p.z = elevation;
+                const ex = ent.extrusionDirection || ent.extrusion;
+                if (ex) return ocsToWcs(p, ex);
+                return p;
+            }
+
+            // ARC/CIRCLE/ELLIPSE are defined in an OCS when an extrusion
+            // direction is supplied.
+            if (options.applyOCS && (ent.extrusionDirection || ent.extrusion)) {
+                return ocsToWcs(p, ent.extrusionDirection || ent.extrusion);
+            }
+            return p;
+        }
+
+        function entityPointToThree(ent, v, anchorX, anchorY, options = {}) {
+            return pointToThree(entityPointToWcs(ent, v, options), anchorX, anchorY);
+        }
+
+        function addLine(points, color, parent = dxfGroup, closed = false, metadata = null) {
+            if (!points || points.length < 2) return null;
+
+            const pts = points.slice();
+            const sourcePoints = metadata && metadata.sourcePoints ? metadata.sourcePoints.map(p => ({ x:Number(p.x||0), y:Number(p.y||0), z:Number(p.z||0) })) : null;
+            if (closed && pts.length > 2) {
+                const a = pts[0], b = pts[pts.length - 1];
+                if (a.distanceToSquared(b) > 1e-12) pts.push(a.clone());
+            }
+
+            const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+            const material = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 1.0,
+                depthTest: false,
+                depthWrite: false
+            });
+            const line = new THREE.Line(geometry, material);
+            line.renderOrder = 1200;
+            line.frustumCulled = false;
+            line.userData.dxfSelectable = true;
+            if (metadata) {
+                line.userData.dxfEntity = metadata.entity || null;
+                line.userData.dxfType = metadata.type || (metadata.entity && metadata.entity.type) || 'ENTITY';
+                line.userData.dxfLayer = metadata.layer || (metadata.entity && metadata.entity.layer) || '-';
+                line.userData.dxfSourcePoints = sourcePoints;
+                line.userData.dxfAnchorX = Number(metadata.anchorX || 0);
+                line.userData.dxfAnchorY = Number(metadata.anchorY || 0);
+            }
+            parent.add(line);
+            return line;
+        }
+
+        function arcPoints(cx, cy, cz, radius, startDeg, endDeg, anchorX, anchorY, segments = 64) {
+            let a0 = THREE.MathUtils.degToRad(startDeg);
+            let a1 = THREE.MathUtils.degToRad(endDeg);
+            while (a1 < a0) a1 += Math.PI * 2;
+
+            const pts = [];
+            const count = Math.max(8, Math.ceil(Math.abs(a1 - a0) / (Math.PI / 24)));
+            for (let i = 0; i <= Math.min(segments * 4, count); i++) {
+                const t = i / Math.min(segments * 4, count);
+                const a = a0 + (a1 - a0) * t;
+                pts.push(new THREE.Vector3(
+                    cx + Math.cos(a) * radius - anchorX,
+                    cz,
+                    -(cy + Math.sin(a) * radius - anchorY)
+                ));
+            }
+            return pts;
+        }
+
+        function makeTextSprite(text, color, height, rotation = 0) {
+            text = cleanMText(text);
+            if (!text) return null;
+
+            const lines = text.split(/\r?\n/);
+            // Raster teks DXF dibuat jauh lebih besar supaya tetap tajam saat export 8K.
+            const fontPx = 144;
+            const linePx = 168;
+            const padding = 32;
+            const longest = lines.reduce((m, x) => Math.max(m, x.length), 1);
+            const widthPx = Math.min(4096, Math.max(256, longest * fontPx * 0.62 + padding * 2));
+            const heightPx = Math.min(4096, Math.max(256, lines.length * linePx + padding * 2));
+
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.ceil(widthPx);
+            canvas.height = Math.ceil(heightPx);
+
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = `600 ${fontPx}px "Segoe UI", Arial, sans-serif`;
+            ctx.textBaseline = "top";
+            ctx.textAlign = "left";
+
+            const c = new THREE.Color(color);
+            ctx.fillStyle = `rgb(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)})`;
+
+            lines.forEach((line, i) => {
+                ctx.fillText(line, padding, padding + i * linePx);
+            });
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+
+            const sprite = new THREE.Sprite(material);
+            const worldHeight = Math.max(Number(height) || 1, 0.01);
+            const aspect = canvas.width / canvas.height;
+            sprite.scale.set(worldHeight * aspect, worldHeight, 1);
+            // Sprite selalu menghadap kamera. Koreksi sudut agar teks tidak terbalik
+            // pada sisi belakang/arah cubemap yang berbeda.
+            let safeRotation = Number(rotation) || 0;
+            safeRotation = ((safeRotation % 360) + 360) % 360;
+            if (safeRotation > 90 && safeRotation < 270) safeRotation += 180;
+            sprite.rotation = THREE.MathUtils.degToRad(safeRotation);
+            sprite.renderOrder = 100;
+
+            sprite.userData.dxfText = text;
+            sprite.userData.dxfHeight = worldHeight;
+            sprite.userData.dxfSelectable = true;
+            return sprite;
+        }
+
+        function renderTextEntity(ent, color, anchorX, anchorY, parent = dxfGroup) {
+            const p = ent.startPoint || ent.position || ent.insertionPoint;
+            if (!p) return;
+
+            const text = ent.text || ent.value || ent.string;
+            if (!text) return;
+
+            const sprite = makeTextSprite(
+                text,
+                color,
+                ent.textHeight || ent.height || 1,
+                ent.rotation || 0
+            );
+            if (!sprite) return;
+
+            const pos = pointToThree(p, anchorX, anchorY);
+            sprite.position.copy(pos);
+            sprite.userData.dxfEntity = ent;
+            sprite.userData.dxfType = String(ent.type || 'TEXT').toUpperCase();
+            sprite.userData.dxfLayer = ent.layer || '-';
+            sprite.userData.dxfAnchorX = Number(anchorX || 0);
+            sprite.userData.dxfAnchorY = Number(anchorY || 0);
+            parent.add(sprite);
+        }
+
+        // Build an AutoCAD-like polyline path. DXF LWPOLYLINE/POLYLINE vertices
+        // may contain a `bulge` value; treating every vertex pair as a straight
+        // segment makes curved corners look disconnected/misaligned.
+        function buildPolylinePoints(ent, vertices, closed, anchorX, anchorY) {
+            if (!Array.isArray(vertices) || vertices.length < 2) return [];
+
+            const pts = [];
+            const count = closed ? vertices.length : vertices.length - 1;
+
+            for (let i = 0; i < count; i++) {
+                const a = vertices[i];
+                const b = vertices[(i + 1) % vertices.length];
+                const aw = entityPointToWcs(ent, a);
+                const bw = entityPointToWcs(ent, b);
+                const a3 = pointToThree(aw, anchorX, anchorY);
+                const b3 = pointToThree(bw, anchorX, anchorY);
+
+                if (i === 0) pts.push(a3);
+
+                const bulge = Number(a.bulge);
+                if (!Number.isFinite(bulge) || Math.abs(bulge) < 1e-12) {
+                    pts.push(b3);
+                    continue;
+                }
+
+                // Bulge is defined in the polyline OCS. Build the arc in OCS,
+                // then transform every generated point to WCS. This avoids the
+                // old bug where XY was reconstructed in WCS and Z was mixed in.
+                const x1 = Number(a.x) || 0, y1 = Number(a.y) || 0;
+                const x2 = Number(b.x) || 0, y2 = Number(b.y) || 0;
+                const dx = x2 - x1, dy = y2 - y1;
+                const chord = Math.hypot(dx, dy);
+                if (chord < 1e-12) { pts.push(b3); continue; }
+
+                const theta = 4 * Math.atan(bulge);
+                const radius = (chord / 2) * (1 + bulge * bulge) / (2 * Math.abs(bulge));
+                const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+                const nx = -dy / chord, ny = dx / chord;
+                const offset = (chord / 2) * (1 - bulge * bulge) / (2 * bulge);
+                const cx = midX + nx * offset;
+                const cy = midY + ny * offset;
+                const startAngle = Math.atan2(y1 - cy, x1 - cx);
+                const steps = Math.max(4, Math.ceil(Math.abs(theta) / (Math.PI / 36)));
+                const elevationA = Number(aw.z) || 0;
+                const elevationB = Number(bw.z) || elevationA;
+                const normal = ent.extrusionDirection || ent.extrusion || {x:0,y:0,z:1};
+
+                for (let j = 1; j <= steps; j++) {
+                    const t = j / steps;
+                    const ang = startAngle + theta * t;
+                    const ocsPoint = {
+                        x: cx + Math.cos(ang) * radius,
+                        y: cy + Math.sin(ang) * radius,
+                        z: elevationA + (elevationB - elevationA) * t
+                    };
+                    const w = ocsToWcs(ocsPoint, normal);
+                    pts.push(pointToThree(w, anchorX, anchorY));
+                }
+            }
+            return pts;
+        }
+
+        function getEntityVertices(ent) {
+            if (Array.isArray(ent.vertices)) return ent.vertices;
+            if (ent.startPoint && ent.endPoint) return [ent.startPoint, ent.endPoint];
+            return [];
+        }
+
+        function renderDXFEntity(ent, dxf, anchorX, anchorY, parent = dxfGroup, depth = 0) {
+            if (!ent || ent.visible === false) return;
+            if (depth > 8) return; // protect against malformed recursive blocks
+
+            const color = colorFromDXF(ent, dxf);
+            const type = String(ent.type || "").toUpperCase();
+
+            // LINE / POLYLINE / LWPOLYLINE
+            if (type === "LINE" || type === "POLYLINE" || type === "LWPOLYLINE") {
+                const vertices = getEntityVertices(ent);
+                if (vertices.length >= 2) {
+                    // AutoCAD's closed flag can be exposed by different parser
+                    // versions as closed, shape or bit 1 in flags.
+                    const closed = !!(ent.closed || ent.shape || ((Number(ent.flags) || 0) & 1));
+                    const pts = (type === "LINE")
+                        ? vertices.map(v => entityPointToThree(ent, v, anchorX, anchorY))
+                        : buildPolylinePoints(ent, vertices, closed, anchorX, anchorY);
+
+                    // buildPolylinePoints already includes the closing segment.
+                    // Store the DXF anchor on the rendered object so a click can
+                    // convert the picked Three.js point back to WCS XYZ exactly.
+                    addLine(pts, color, parent, false, {
+                        entity: ent, type: type, layer: ent.layer,
+                        anchorX: anchorX, anchorY: anchorY
+                    });
+                }
+                return;
+            }
+
+            // 3D POLYLINE can also expose vertices with z.
+            if (type === "3DPOLYLINE") {
+                const pts = getEntityVertices(ent).map(v => entityPointToThree(ent, v, anchorX, anchorY));
+                addLine(pts, color, parent, !!ent.closed, {
+                    entity: ent, type: type, layer: ent.layer, anchorX: anchorX, anchorY: anchorY
+                });
+                return;
+            }
+
+            // ARC
+            if (type === "ARC") {
+                const c = ent.center || ent.startPoint;
+                const radius = Number(ent.radius || 0);
+                if (c && radius > 0) {
+                    addLine(
+                        arcPoints(
+                            Number(c.x || 0), Number(c.y || 0), Number(c.z || 0),
+                            radius,
+                            Number(ent.startAngle || 0),
+                            Number(ent.endAngle || 0),
+                            anchorX, anchorY
+                        ),
+                        color,
+                        parent
+                    );
+                }
+                return;
+            }
+
+            // CIRCLE
+            if (type === "CIRCLE") {
+                const c = ent.center;
+                const radius = Number(ent.radius || 0);
+                if (c && radius > 0) {
+                    addLine(
+                        arcPoints(
+                            Number(c.x || 0), Number(c.y || 0), Number(c.z || 0),
+                            radius, 0, 360, anchorX, anchorY, 96
+                        ),
+                        color,
+                        parent,
+                        true
+                    );
+                }
+                return;
+            }
+
+            // ELLIPSE - approximate using major axis and ratio.
+            if (type === "ELLIPSE") {
+                const c = ent.center;
+                const major = ent.majorAxisEndPoint || ent.majorAxis || ent.majorAxisVector;
+                if (c && major) {
+                    const mx = Number(major.x || 0);
+                    const my = Number(major.y || 0);
+                    const mz = Number(major.z || 0);
+                    const majorLen = Math.hypot(mx, my, mz);
+                    const ratio = Number(ent.axisRatio || ent.ratio || 1);
+                    if (majorLen > 0) {
+                        const pts = [];
+                        const start = Number(ent.startAngle || 0);
+                        const end = Number(ent.endAngle == null ? Math.PI * 2 : ent.endAngle);
+                        const isRadians = Math.abs(end) <= Math.PI * 2 + 0.01 && Math.abs(start) <= Math.PI * 2 + 0.01;
+                        const a0 = isRadians ? start : THREE.MathUtils.degToRad(start);
+                        const a1 = isRadians ? end : THREE.MathUtils.degToRad(end);
+                        const count = 96;
+                        for (let i = 0; i <= count; i++) {
+                            const t = i / count;
+                            const a = a0 + (a1 - a0) * t;
+                            const ux = mx / majorLen, uy = my / majorLen;
+                            const vx = -uy, vy = ux;
+                            const x = Number(c.x || 0) + mx * Math.cos(a) + vx * majorLen * ratio * Math.sin(a);
+                            const y = Number(c.y || 0) + my * Math.cos(a) + vy * majorLen * ratio * Math.sin(a);
+                            pts.push(new THREE.Vector3(x - anchorX, Number(c.z || 0), -(y - anchorY)));
+                        }
+                        addLine(pts, color, parent, Math.abs((a1 - a0) - Math.PI * 2) < 0.01);
+                    }
+                }
+                return;
+            }
+
+            // TEXT / MTEXT
+            if (type === "TEXT" || type === "MTEXT" || type === "ATTRIB" || type === "ATTDEF") {
+                renderTextEntity(ent, color, anchorX, anchorY, parent);
+                return;
+            }
+
+            // POINT - render as a small crosshair.
+            if (type === "POINT") {
+                const p = ent.position || ent.startPoint;
+                if (p) {
+                    const q = pointToThree(p, anchorX, anchorY);
+                    const s = 0.15;
+                    const pointMeta = { entity: ent, type: type, layer: ent.layer, anchorX: anchorX, anchorY: anchorY };
+                    addLine([
+                        q.clone().add(new THREE.Vector3(-s, 0, 0)),
+                        q.clone().add(new THREE.Vector3(s, 0, 0))
+                    ], color, parent, false, pointMeta);
+                    addLine([
+                        q.clone().add(new THREE.Vector3(0, 0, -s)),
+                        q.clone().add(new THREE.Vector3(0, 0, s))
+                    ], color, parent, false, pointMeta);
+                }
+                return;
+            }
+
+            // INSERT - render referenced BLOCK entities.
+            if (type === "INSERT") {
+                const blockName = ent.name || ent.block || ent.blockName;
+                const block = dxf.blocks && blockName ? dxf.blocks[blockName] : null;
+                const ip = ent.position || ent.insertionPoint || ent.startPoint;
+                if (block && Array.isArray(block.entities) && ip) {
+                    const g = new THREE.Group();
+                    const ins = pointToThree(ip, anchorX, anchorY);
+                    g.position.copy(ins);
+                    g.rotation.y = THREE.MathUtils.degToRad(Number(ent.rotation || 0));
+                    const sx = Number(ent.xScale == null ? 1 : ent.xScale);
+                    const sy = Number(ent.yScale == null ? 1 : ent.yScale);
+                    const sz = Number(ent.zScale == null ? 1 : ent.zScale);
+                    g.scale.set(sx, sz, sy);
+                    parent.add(g);
+
+                    // Block coordinates are local, so use a zero anchor for block content.
+                    block.entities.forEach(child => {
+                        renderDXFEntity(child, dxf, 0, 0, g, depth + 1);
+                    });
+                }
+                return;
+            }
+
+            // SPLINE fallback: use fit points/control points if parser exposes them.
+            if (type === "SPLINE") {
+                const ptsRaw = ent.fitPoints || ent.controlPoints || ent.vertices || [];
+                if (ptsRaw.length >= 2) {
+                    addLine(ptsRaw.map(v => pointToThree(v, anchorX, anchorY)), color, parent);
+                }
+                return;
+            }
+
+            // Generic fallback for unsupported entities exposing vertices.
+            const fallback = getEntityVertices(ent);
+            if (fallback.length >= 2) {
+                addLine(fallback.map(v => pointToThree(v, anchorX, anchorY)), color, parent, !!ent.closed);
+            }
+        }
+
+        function collectDxfBounds(dxf) {
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            const inspect = (ent, depth = 0) => {
+                if (!ent || depth > 8) return;
+
+                const candidates = [];
+                if (Array.isArray(ent.vertices)) candidates.push(...ent.vertices);
+                if (ent.startPoint) candidates.push(ent.startPoint);
+                if (ent.endPoint) candidates.push(ent.endPoint);
+                if (ent.position) candidates.push(ent.position);
+                if (ent.insertionPoint) candidates.push(ent.insertionPoint);
+                if (ent.center) candidates.push(ent.center);
+
+                candidates.forEach(v => {
+                    if (!v) return;
+                    const x = Number(v.x), y = Number(v.y);
+                    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                });
+
+                // Include INSERT insertion point.
+                if (String(ent.type).toUpperCase() === "INSERT") {
+                    const block = dxf.blocks && dxf.blocks[ent.name];
+                    if (block && Array.isArray(block.entities)) {
+                        block.entities.forEach(child => inspect(child, depth + 1));
+                    }
+                }
+            };
+
+            (dxf.entities || []).forEach(e => inspect(e));
+            return { minX, maxX, minY, maxY };
+        }
+
+        function buildDXFTopology(dxf, bounds) {
+            // CAD viewers do not render every LINE with an unrelated coordinate
+            // system.  Endpoints that are numerically equal (or differ only by
+            // tiny CAD export precision) are treated as the same topological
+            // vertex. This prevents visible micro-gaps between LINE/POLYLINEs.
+            const span = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1);
+            const tolerance = Math.max(1e-7 * span, 1e-6);
+            const buckets = new Map();
+
+            function key(v) {
+                const x = Number(v.x || 0), y = Number(v.y || 0), z = Number(v.z || 0);
+                return `${Math.round(x / tolerance)},${Math.round(y / tolerance)},${Math.round(z / tolerance)}`;
+            }
+
+            function snap(v) {
+                if (!v || !Number.isFinite(Number(v.x)) || !Number.isFinite(Number(v.y))) return v;
+                const k = key(v);
+                let c = buckets.get(k);
+                if (!c) {
+                    c = { x: Number(v.x), y: Number(v.y), z: Number(v.z || 0) };
+                    buckets.set(k, c);
+                }
+                return c;
+            }
+
+            function visit(ent, depth = 0) {
+                if (!ent || depth > 12) return;
+                const type = String(ent.type || '').toUpperCase();
+                if (Array.isArray(ent.vertices) &&
+                    (type === 'LINE' || type === 'POLYLINE' || type === 'LWPOLYLINE' || type === '3DPOLYLINE')) {
+                    ent.vertices = ent.vertices.map(v => snap(v));
+                }
+                if (ent.startPoint) ent.startPoint = snap(ent.startPoint);
+                if (ent.endPoint) ent.endPoint = snap(ent.endPoint);
+                if (ent.position) ent.position = snap(ent.position);
+                if (ent.insertionPoint) ent.insertionPoint = snap(ent.insertionPoint);
+                if (ent.center) ent.center = snap(ent.center);
+                if (type === 'INSERT') {
+                    const block = dxf.blocks && dxf.blocks[ent.name];
+                    if (block && Array.isArray(block.entities)) block.entities.forEach(e => visit(e, depth + 1));
+                }
+            }
+            (dxf.entities || []).forEach(e => visit(e));
+            return { tolerance, vertexCount: buckets.size };
+        }
+
+        function processAndRenderDXF(dxf) {
+            while (dxfGroup.children.length > 0) {
+                const child = dxfGroup.children.pop();
+                child.traverse(obj => {
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) {
+                        if (obj.material.map) obj.material.map.dispose();
+                        obj.material.dispose();
+                    }
+                });
+            }
+
+            if (!dxf || !Array.isArray(dxf.entities)) {
+                alert('DXF tidak memiliki entity yang dapat dibaca.');
+                return;
+            }
+
+            const bounds = collectDxfBounds(dxf);
+            if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.minY)) {
+                alert('DXF berhasil diparse, tetapi tidak ditemukan koordinat geometry.');
+                return;
+            }
+
+            dxfAnchor.x = (droneUTM.x !== null) ? droneUTM.x : (bounds.minX + bounds.maxX) / 2;
+            dxfAnchor.y = (droneUTM.y !== null) ? droneUTM.y : (bounds.minY + bounds.maxY) / 2;
+
+            // Do NOT mutate/snap source coordinates. CAD coordinates are authoritative;
+            // changing them here can create incorrect XYZ positions. We only collect
+            // connectivity diagnostics and render the original coordinates.
+
+            document.getElementById('info-dxf-pos').innerText =
+                `DXF Anchor: X=${dxfAnchor.x.toFixed(1)}, Y=${dxfAnchor.y.toFixed(1)}`;
+
+            const stats = {};
+            dxf.entities.forEach(ent => {
+                const type = String(ent.type || 'UNKNOWN').toUpperCase();
+                stats[type] = (stats[type] || 0) + 1;
+                renderDXFEntity(ent, dxf, dxfAnchor.x, dxfAnchor.y);
+            });
+
+            const statText = Object.entries(stats).map(([k, v]) => `${k}: ${v}`).join(' | ');
+            console.info('DXF loaded:', { entities: dxf.entities.length, bounds, anchor: dxfAnchor, types: stats });
+
+            document.getElementById('sync-text').innerText = `DXF LOADED • ${dxf.entities.length} ENTITIES`;
+            document.getElementById('sync-status').className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
+
+            if (droneUTM.x === null) {
+                const span = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 1);
+                controls.target.set(0, 0, 0);
+                camera.position.set(0, Math.max(span * 0.8, 20), Math.max(span * 0.8, 20));
+                controls.update();
+            }
+            console.info('DXF entity summary:', statText);
+        }
+        
+        // Kontrol Interaktif Slider
+        const sliderZ = document.getElementById('sliderZ');
+        const sliderRot = document.getElementById('sliderRot');
+        const sliderScale = document.getElementById('sliderScale');
+
+        function updateTransform() {
+            dxfGroup.position.y = parseFloat(sliderZ.value);
+            document.getElementById('valZ').innerText = parseFloat(sliderZ.value).toFixed(2) + "m";
+
+            const rot = parseFloat(sliderRot.value);
+            dxfGroup.rotation.y = THREE.MathUtils.degToRad(rot);
+            document.getElementById('valRot').innerText = (rot > 0 ? '+' : '') + rot.toFixed(1) + "°";
+
+            const scale = parseFloat(sliderScale.value);
+            dxfGroup.scale.set(scale, scale, scale);
+            document.getElementById('valScale').innerText = scale.toFixed(2) + "x";
+        }
+
+        sliderZ.addEventListener('input', updateTransform);
+        sliderRot.addEventListener('input', updateTransform);
+        sliderScale.addEventListener('input', updateTransform);
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            sliderZ.value = 0; sliderRot.value = 0; sliderScale.value = 1;
+            updateTransform();
+        });
+
+        // ============================================================
+        // DXF PICK / COORDINATE INSPECTOR
+        // Klik LINE / POLYLINE / POINT untuk membaca koordinat sumber DXF.
+        // Koordinat yang ditampilkan adalah WCS DXF: X=Easting, Y=Northing,
+        // Z=Elevation. Transform visual (rotasi/skala/Z overlay) tidak
+        // mengubah angka koordinat sumber.
+        // ============================================================
+        const dxfRaycaster = new THREE.Raycaster();
+        const dxfPointer = new THREE.Vector2();
+        dxfRaycaster.params.Line.threshold = 0.75;
+        dxfRaycaster.params.Points.threshold = 1.0;
+
+        const dxfPanel = document.getElementById('dxf-coordinate-panel');
+        document.getElementById('dxf-info-close').addEventListener('click', () => {
+            dxfPanel.classList.add('hidden');
+            clearDXFSelection();
+        });
+
+        function formatCoord(v) {
+            return Number(v).toFixed(3);
+        }
+
+        function localThreeToWcs(p, anchorX, anchorY) {
+            return {
+                x: Number(p.x) + Number(anchorX || 0),
+                y: -Number(p.z) + Number(anchorY || 0),
+                z: Number(p.y)
+            };
+        }
+
+        function closestPointOnPolyline(localPoint, positions) {
+            let best = null;
+            let bestDist = Infinity;
+            for (let i = 0; i < positions.length - 1; i++) {
+                const a = positions[i], b = positions[i + 1];
+                const ab = b.clone().sub(a);
+                const len2 = ab.lengthSq();
+                let t = len2 > 1e-20 ? localPoint.clone().sub(a).dot(ab) / len2 : 0;
+                t = Math.max(0, Math.min(1, t));
+                const q = a.clone().add(ab.multiplyScalar(t));
+                const d2 = q.distanceToSquared(localPoint);
+                if (d2 < bestDist) {
+                    bestDist = d2;
+                    best = q;
+                }
+            }
+            return best;
+        }
+
+        function getPickedDXFCoordinate(object, intersection) {
+            // Bring picked world point into the DXF group's local coordinate
+            // system. This automatically compensates for slider rotation,
+            // scale and Z overlay.
+            const worldPoint = intersection.point.clone();
+            const dxfLocal = dxfGroup.worldToLocal(worldPoint.clone());
+
+            // Find the closest rendered segment in the clicked object.
+            const geom = object.geometry;
+            if (geom && geom.attributes && geom.attributes.position) {
+                const arr = geom.attributes.position.array;
+                const positions = [];
+                for (let i = 0; i < arr.length; i += 3) {
+                    positions.push(new THREE.Vector3(arr[i], arr[i + 1], arr[i + 2]));
+                }
+                if (positions.length >= 2) {
+                    const q = closestPointOnPolyline(dxfLocal, positions) || dxfLocal;
+                    return localThreeToWcs(q, object.userData.dxfAnchorX, object.userData.dxfAnchorY);
+                }
+            }
+
+            return localThreeToWcs(dxfLocal, object.userData.dxfAnchorX, object.userData.dxfAnchorY);
+        }
+
+        function clearDXFSelection() {
+            while (dxfSelectionGroup.children.length) {
+                const child = dxfSelectionGroup.children.pop();
+                if (child.geometry && child.geometry.dispose && child.userData && child.userData.ownsGeometry) child.geometry.dispose();
+                if (child.material) {
+                    if (child.material.map && child.userData && child.userData.ownsTexture) child.material.map.dispose();
+                    child.material.dispose();
+                }
+            }
+        }
+
+        function highlightDXFEntity(object, intersection) {
+            clearDXFSelection();
+            const entity = object.userData && object.userData.dxfEntity;
+            if (!entity) return;
+
+            // Satu entity bisa menghasilkan beberapa object (POINT crosshair,
+            // atau entity yang dirender sebagai beberapa bagian). Highlight semua.
+            const selectedObjects = [];
+            dxfGroup.traverse(obj => {
+                if (obj.userData && obj.userData.dxfSelectable && obj.userData.dxfEntity === entity) {
+                    selectedObjects.push(obj);
+                }
+            });
+
+            selectedObjects.forEach(src => {
+                if (src.isLine) {
+                    const mat = new THREE.LineBasicMaterial({
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 1,
+                        depthTest: false,
+                        linewidth: 12
+                    });
+                    const glow = new THREE.Line(src.geometry, mat);
+                    glow.position.copy(src.position);
+                    glow.rotation.copy(src.rotation);
+                    glow.scale.copy(src.scale);
+                    glow.renderOrder = 1001;
+                    glow.userData.isDXFHighlight = true;
+                    dxfSelectionGroup.add(glow);
+                } else if (src.isSprite) {
+                    const mat = src.material.clone();
+                    mat.color = new THREE.Color(0xffff00);
+                    mat.opacity = 1;
+                    mat.depthTest = false;
+                    const glow = new THREE.Sprite(mat);
+                    glow.position.copy(src.position);
+                    glow.rotation = src.rotation;
+                    glow.scale.copy(src.scale).multiplyScalar(1.10);
+                    glow.renderOrder = 1002;
+                    glow.userData.ownsTexture = false;
+                    dxfSelectionGroup.add(glow);
+                }
+            });
+
+            // Marker jelas pada titik yang benar-benar diklik.
+            if (intersection && intersection.point) {
+                const marker = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.22, 16, 12),
+                    new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.95, depthTest: false })
+                );
+                marker.position.copy(intersection.point);
+                marker.renderOrder = 1003;
+                marker.userData.ownsGeometry = true;
+                dxfSelectionGroup.add(marker);
+            }
+        }
+
+        function showDXFCoordinate(object, intersection) {
+            const entity = object.userData.dxfEntity || {};
+            let coord;
+            const entityType = String(object.userData.dxfType || entity.type || '').toUpperCase();
+            // POINT harus mengembalikan koordinat entity asli, bukan titik pada
+            // salah satu lengan crosshair visual.
+            if (entityType === 'POINT') {
+                const p = entity.position || entity.startPoint;
+                const w = p ? entityPointToWcs(entity, p) : null;
+                coord = w || getPickedDXFCoordinate(object, intersection);
+            } else {
+                coord = getPickedDXFCoordinate(object, intersection);
+            }
+            const type = object.userData.dxfType || entity.type || 'ENTITY';
+            const layer = object.userData.dxfLayer || entity.layer || '-';
+
+            document.getElementById('dxf-selected-type').innerText = `Entity: ${type}`;
+            document.getElementById('dxf-selected-layer').innerText = `Layer: ${layer}`;
+            document.getElementById('dxf-selected-x').innerText = `X (Easting): ${formatCoord(coord.x)}`;
+            document.getElementById('dxf-selected-y').innerText = `Y (Northing): ${formatCoord(coord.y)}`;
+            document.getElementById('dxf-selected-z').innerText = `Z (Elevation): ${formatCoord(coord.z)} m`;
+            document.getElementById('dxf-selected-extra').innerText =
+                `EPSG:32748 • WGS 84 / UTM zone 48S`;
+            dxfPanel.classList.remove('hidden');
+        }
+
+        // Picking CAD dibuat lebih mudah tanpa mengganggu OrbitControls.
+        // Klik = pilih, drag/orbit = tidak memilih.
+        let dxfPickDown = null;
+        const EASY_PICK_LINE_PX = 55;
+        const EASY_PICK_POINT_PX = 75;
+        const EASY_PICK_TEXT_PX = 85;
+
+        function screenDistanceToSegment(px, py, ax, ay, bx, by) {
+            const vx = bx - ax, vy = by - ay;
+            const wx = px - ax, wy = py - ay;
+            const len2 = vx * vx + vy * vy;
+            let t = len2 ? (wx * vx + wy * vy) / len2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const cx = ax + t * vx, cy = ay + t * vy;
+            const dx = px - cx, dy = py - cy;
+            return { distance: Math.hypot(dx, dy), t, x: cx, y: cy };
+        }
+
+        function worldToClient(v) {
+            const p = v.clone().project(camera);
+            const rect = renderer.domElement.getBoundingClientRect();
+            return {
+                x: rect.left + (p.x + 1) * 0.5 * rect.width,
+                y: rect.top + (1 - p.y) * 0.5 * rect.height,
+                z: p.z
+            };
+        }
+
+        function easyScreenPick(clientX, clientY) {
+            let best = null;
+            const mouse = { x: clientX, y: clientY };
+
+            dxfGroup.traverse(obj => {
+                if (!obj.userData || !obj.userData.dxfSelectable) return;
+                if (obj.visible === false) return;
+
+                const type = String(obj.userData.dxfType || '').toUpperCase();
+                const pts = obj.geometry && obj.geometry.attributes && obj.geometry.attributes.position;
+
+                if (pts && pts.count >= 2 && (obj.isLine || obj.isLineSegments)) {
+                    const step = obj.isLineSegments ? 2 : 1;
+                    const last = obj.isLineSegments ? pts.count - 1 : pts.count - 1;
+                    for (let i = 0; i < last; i += step) {
+                        const j = obj.isLineSegments ? i + 1 : i + 1;
+                        if (j >= pts.count) break;
+                        const a = new THREE.Vector3().fromBufferAttribute(pts, i).applyMatrix4(obj.matrixWorld);
+                        const b = new THREE.Vector3().fromBufferAttribute(pts, j).applyMatrix4(obj.matrixWorld);
+                        const sa = worldToClient(a), sb = worldToClient(b);
+                        if (sa.z < -1 || sa.z > 1 || sb.z < -1 || sb.z > 1) continue;
+                        const hit = screenDistanceToSegment(mouse.x, mouse.y, sa.x, sa.y, sb.x, sb.y);
+                        if (hit.distance <= EASY_PICK_LINE_PX && (!best || hit.distance < best.distance)) {
+                            const world = a.clone().lerp(b, hit.t);
+                            best = { object: obj, point: world, distance: hit.distance };
+                        }
+                    }
+                } else {
+                    const pos = obj.position ? obj.getWorldPosition(new THREE.Vector3()) : null;
+                    if (!pos) return;
+                    const sp = worldToClient(pos);
+                    if (sp.z < -1 || sp.z > 1) return;
+                    const d = Math.hypot(mouse.x - sp.x, mouse.y - sp.y);
+                    const tol = type.includes('TEXT') || type.includes('MTEXT') || type.includes('ATTRIB') || type.includes('ATTDEF')
+                        ? EASY_PICK_TEXT_PX : EASY_PICK_POINT_PX;
+                    if (d <= tol && (!best || d < best.distance)) {
+                        best = { object: obj, point: pos, distance: d };
+                    }
+                }
+            });
+            return best;
+        }
+
+        renderer.domElement.addEventListener('pointerdown', function(event) {
+            dxfPickDown = { x: event.clientX, y: event.clientY };
+        }, false);
+
+        renderer.domElement.addEventListener('click', function(event) {
+            if (dxfPickDown) {
+                const moved = Math.hypot(event.clientX - dxfPickDown.x, event.clientY - dxfPickDown.y);
+                if (moved > 7) { dxfPickDown = null; return; }
+            }
+            dxfPickDown = null;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            dxfPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            dxfPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            dxfRaycaster.setFromCamera(dxfPointer, camera);
+
+            const candidates = [];
+            dxfGroup.traverse(obj => {
+                if (obj.userData && obj.userData.dxfSelectable) candidates.push(obj);
+            });
+            if (!candidates.length) return;
+
+            // Utamakan hit screen-space yang lebih mudah seperti CAD.
+            const easyHit = easyScreenPick(event.clientX, event.clientY);
+            if (easyHit) {
+                const synthetic = { object: easyHit.object, point: easyHit.point, distance: easyHit.distance };
+                highlightDXFEntity(easyHit.object, synthetic);
+                showDXFCoordinate(easyHit.object, synthetic);
+                return;
+            }
+
+            // Fallback raycaster untuk entity yang sulit diproyeksikan.
+            const hits = dxfRaycaster.intersectObjects(candidates, true);
+            if (hits.length) {
+                const hit = hits[0];
+                let obj = hit.object;
+                while (obj && !obj.userData.dxfSelectable) obj = obj.parent;
+                if (obj) {
+                    highlightDXFEntity(obj, hit);
+                    showDXFCoordinate(obj, hit);
+                }
+            }
+        }, false);
+        // Loop Animasi & Kompas Real-time
+        const compassArrow = document.getElementById('compass-arrow');
+        const headingVal = document.getElementById('heading-val');
+        const pitchVal = document.getElementById('pitch-val');
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Bearing kamera dihitung dari arah pandang (camera -> target),
+            // dengan konvensi peta: Utara=0°, Timur=90°, Selatan=180°, Barat=270°.
+            // Pada scene ini sumbu Three.js: +X = Timur dan -Z = Utara.
+            // Rumus lama memakai posisi camera terhadap target sehingga arah Timur/Barat
+            // menjadi terbalik setelah panorama + DXF dimuat.
+            const heading = getCameraWorldHeading();
+            calCurrentHeading.textContent = `${heading.toFixed(1)}°`;
+            
+            // Putar jarum kompas searah jarum jam dari Utara.
+            compassArrow.style.transform = `rotate(${heading}deg)`;
+            
+            // Update teks heading beserta keterangan mata angin (U, TL, T, TG, S, BD, B, BL)
+            const cardinal = getCardinalDirection(heading);
+            headingVal.innerText = `${Math.round(heading)}° (${cardinal})`;
+            
+            // Hitung nilai pitch kamera
+            const pitch = THREE.MathUtils.radToDeg(camera.rotation.x);
+            pitchVal.innerText = `Pitch: ${Math.round(pitch)}°`;
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+
+<style>
+    #app-copyright-footer{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:7px 12px;font:11px/1.3 Arial,sans-serif;border-top:1px}
+    #app-copyright-footer a{color:#60a5fa;text-decoration:none;font-weight:600}#app-copyright-footer a:hover{text-decoration:underline}#app-copyright-footer .sep{opacity:.45}
+    @media(max-width:600px){#app-copyright-footer{font-size:11px;padding:6px 8px;gap:6px}}
+    </style>
+    <div id="app-copyright-footer" aria-label="Copyright information">
+      <span>© 2026 MOCODESTA NEXT GENERATION. ALL rights reserved.</span>
+    
+      <span class="sep">|</span>
+      <a href="https://drive.google.com/drive/folders/1UlWUf4hQ8BzwTtH8bDG14VlgQPeL8XI8?usp=drive_link" target="_blank" rel="noopener noreferrer">Database Foto 360 & File. dxf</a>
+    </div>
+        <script>
+            document.onkeydown = function(e) {
+            if(event.keyCode == 123) {
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'E'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'H'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'A'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'F'.charCodeAt(0)){
+            return false;
+            }
+            if(e.ctrlKey && e.keyCode == 'E'.charCodeAt(0)){
+            return false;
+            }
+            }
+            </script>
+            <script type="text/javascript">
+                //Script for disabling right click on mouse
+                var message="SILAHKAN MULAI DENGAN MEMASUKKAN FOTO 360 DAN FILE. DXF ATAU MASUKKAN GABUNGAN FOTO 360 + DXF";
+                function clickdsb(){
+                if (event.button==2){
+                alert(message);
+                return false;
+                }
+                }
+                function clickbsb(e){
+                if (document.layers||document.getElementById&&!document.all){
+                if (e.which==2||e.which==3){
+                alert(message);
+                return false;
+                }
+                }
+                }
+                if (document.layers){
+                document.captureEvents(Event.MOUSEDOWN);
+                document.onmousedown=clickbsb;
+                }
+                else if (document.all&&!document.getElementById){
+                document.onmousedown=clickdsb;
+                }
+                
+                document.oncontextmenu=new Function("alert(message);return false")
+        </script>
+
+</body>
+</html>
